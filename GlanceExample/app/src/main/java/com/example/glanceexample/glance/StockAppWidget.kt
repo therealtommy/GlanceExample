@@ -14,6 +14,7 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
+import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.cornerRadius
@@ -40,7 +41,7 @@ import java.util.Locale
 class StockAppWidget : GlanceAppWidget() {
     private var job: Job? = null
     companion object {
-        private val smallMode = DpSize(100.dp, 80.dp)
+       private val smallMode = DpSize(100.dp, 80.dp)
         private val mediumMode = DpSize(120.dp, 120.dp)
     }
     override val sizeMode: SizeMode = SizeMode.Responsive(
@@ -72,9 +73,15 @@ class StockAppWidget : GlanceAppWidget() {
             }
         }
     }
-
-}
-
+    @Composable
+    fun GlanceContent() {
+        val stateCount by PriceDataRepo.currentPrice.collectAsState()
+        val size = LocalSize.current
+        when (size) {
+            smallMode -> Small(stateCount)
+            mediumMode -> Medium(stateCount)
+        }
+    }
     @Composable
     private fun StockDisplay(stateCount: Float) {
 
@@ -98,50 +105,42 @@ class StockAppWidget : GlanceAppWidget() {
             style = textStyle)
         Text("${PriceDataRepo.change} %", style = textStyle)
     }
-    private fun startUpdateJob(timeInterval: Long, context: Context): Job {
-
-        return CoroutineScope(Dispatchers.Default).launch {
-            while (true) {
-                PriceDataRepo.update()
-                StockAppWidget().updateAll(context)
-                delay(timeInterval)
-            }
-        }
-    }
-    @Composable
-    fun GlanceContent() {
-        val stateCount by PriceDataRepo.currentPrice.collectAsState()
-        val size = LocalSize.current
-        when (size) {
-            smallMode -> Small(stateCount)
-            mediumMode -> Medium(stateCount)
-        }
-    }
     @Composable
     private fun Small(stateCount: Float) {
         Column(modifier = GlanceModifier
             .fillMaxSize()
+            .clickable { refreshPrice() }
             .background(GlanceTheme.colors.background)
             .padding(8.dp)) {
             StockDisplay(stateCount)
         }
     }
-@Composable
-private fun Medium(stateCount: Float) {
-    Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .cornerRadius(15.dp)
-            .background(GlanceTheme.colors.background)
-            .padding(8.dp)) {
-        StockDisplay(stateCount)
-        Image(
-            provider = ImageProvider(if (PriceDataRepo.change > 0)
-                R.drawable.up_arrow else R.drawable.down_arrow),
-            contentDescription = "Arrow Image",
+    @Composable
+    private fun Medium(stateCount: Float) {
+        Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(20.dp)
-        )
+                .clickable { refreshPrice() }
+                .cornerRadius(15.dp)
+                .background(GlanceTheme.colors.background)
+                .padding(8.dp)) {
+            StockDisplay(stateCount)
+            Image(
+                provider = ImageProvider(if (PriceDataRepo.change > 0)
+                    R.drawable.up_arrow else R.drawable.down_arrow),
+                contentDescription = "Arrow Image",
+                modifier = GlanceModifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            )
+        }
     }
+    private fun refreshPrice() {
+        PriceDataRepo.update()
+    }
+
 }
+
+
+
+
